@@ -1,0 +1,108 @@
+esphome:
+  name: RemoteSwitch
+  friendly_name: ESP32 Remote Switch Box
+  on_boot:
+    # default to green LED when connecting
+    - light.turn_on: 
+        id: status_light
+        brightness: 20%
+        red: 0%
+        green: 100%
+        blue: 0%
+
+esp32:
+  board: esp32-s3-devkitc-1
+  variant: esp32s3
+  framework:
+    type: esp-idf
+  flash_size: 4MB
+
+psram:
+  mode: quad
+  speed: 80MHz
+
+# Enable logging
+logger:
+  level: DEBUG
+
+api:
+  reboot_timeout: 0s
+  
+ota:
+  - platform: esphome
+    password: !secret ota_password
+    on_begin:
+      then:
+        # Turn the LED Red when OTA Updating
+        - light.turn_on: 
+            id: status_light
+            brightness: 40%
+            red: 40%
+            green: 0%
+            blue: 0%
+            transition_length: 0s
+        - lambda: "id(status_light).loop();"
+
+wifi:
+  ssid: !secret wifi_ssid_home
+  password: !secret wifi_pass_home
+
+captive_portal:
+
+web_server:
+  port: 8088
+  ota: false
+  local: true
+  auth:
+    username: !secret web_server_user
+    password: !secret web_server_pass
+
+light:
+  - platform: esp32_rmt_led_strip
+    id: status_light
+    chipset: WS2812
+    pin: GPIO48
+    num_leds: 1
+    rgb_order: GRB
+    name: "WS2812B Light"
+    restore_mode: ALWAYS_ON 
+
+
+switch:
+  - platform: gpio
+    name: "Power"
+    pin: 7
+    id: power
+  - platform: gpio
+    name: "Reset"
+    pin: 6
+    id: reset
+
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: 5
+      mode: INPUT_PULLUP
+      inverted: true
+    name: "Status"
+
+i2c:
+  sda: 11
+  scl: 12
+  scan: true
+  frequency: 400kHz
+  id: bus_a
+
+sensor:
+  - platform: bme680
+    temperature:
+      name: "BME680 Temperature"
+      oversampling: 16x
+    pressure:
+      name: "BME680 Pressure"
+    humidity:
+      name: "BME680 Humidity"
+    gas_resistance:
+      name: "BME680 Gas Resistance"
+    address: 0x77
+    update_interval: 60s
